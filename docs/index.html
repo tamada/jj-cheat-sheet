@@ -83,11 +83,12 @@ header.top{
 .tab .t-emoji{font-size:1.5rem}
 .tab .t-name{font-weight:800;margin-top:4px}
 .tab .t-desc{font-size:.8rem;color:var(--dim);margin-top:2px;line-height:1.5}
-.tab[aria-selected="true"]{border-color:transparent;box-shadow:var(--shadow)}
-.tab[aria-selected="true"]::before{
-  content:"";position:absolute;inset:0;padding:2px;border-radius:14px;background:var(--grad);
-  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor;mask-composite:exclude;pointer-events:none;
+.tab[aria-selected="true"]{
+  border-color:transparent;box-shadow:var(--shadow);
+  background:linear-gradient(var(--card),var(--card)) padding-box,var(--grad) border-box;
+}
+.tab[aria-selected="true"]:hover{
+  background:linear-gradient(var(--card-hover),var(--card-hover)) padding-box,var(--grad) border-box;
 }
 #searchInfo{max-width:1100px;margin:18px auto 0;padding:0 20px;color:var(--dim);font-size:.85rem;display:none}
 
