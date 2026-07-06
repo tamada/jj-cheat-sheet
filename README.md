@@ -44,3 +44,7 @@ jj git push
 - [公式ドキュメント](https://docs.jj-vcs.dev/latest/)
 - [GitHub との連携ガイド](https://docs.jj-vcs.dev/latest/github/)
 - [Git コマンド対応表](https://docs.jj-vcs.dev/latest/git-command-table/)
+
+## ライセンス
+
+[MIT License](./LICENSE)
