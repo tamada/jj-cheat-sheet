@@ -11,11 +11,11 @@ GitHub Flow における pull / push / ブランチ運用を jj でどう扱う�
 
 ## ローカルで見る
 
-`index.html` をブラウザで開くだけです。
+`docs/index.html` をブラウザで開くだけです。
 
 ## GitHub Pages で公開する
 
-このリポジトリは jj(colocated)で管理されています。
+このリポジトリは `jj` (colocated)で管理されています。
 
 ```sh
 # 1. GitHub に空のリポジトリを作成したら、リモートを登録
@@ -25,12 +25,12 @@ jj git remote add origin git@github.com:YOUR_NAME/jujutsu-cheat-sheet.git
 jj git push -b main
 
 # 3. GitHub リポジトリの Settings → Pages →
-#    Source: Deploy from a branch / Branch: main / フォルダ: /(root)
+#    Source: Deploy from a branch / Branch: main / フォルダ: /docs
 ```
 
 数分後に `https://YOUR_NAME.github.io/jujutsu-cheat-sheet/` で公開されます。
 
-## 日々の更新(このリポジトリ自体が jj の練習台)
+## 日々の更新(このリポジトリ自体が `jj` の練習台)
 
 ```sh
 # 編集したら
