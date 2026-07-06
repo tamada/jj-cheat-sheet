@@ -385,6 +385,13 @@ jj undo    <span class="c"># やっぱりさっきのは無し!</span></code></p
     <div class="cmd"><pre><code>jj op log</code></pre></div>
     <p class="note">「リポジトリ全体のタイムマシン」。undo で戻りすぎたら <code>jj redo</code> はありませんが、<code>jj op restore &lt;操作ID&gt;</code> で任意の時点に戻れます。</p>
   </article>
+  <article class="card" data-tags="empty 枝分かれ 分岐 先端 並行 auto-abandon 自動破棄 整理 きれいに">
+    <h3>先端が empty のまま枝分かれしたら</h3>
+    <p>複数の作業コピー(別マシン・並行操作・undo 後など)が合流すると、<b>空で説明なしの先端</b>が複数残ることがあります。中身のあるコミットは失われていないので慌てなくて大丈夫。</p>
+    <div class="cmd"><pre><code>jj edit <span class="p">&lt;使いたい方のchange ID&gt;</span>   <span class="c"># そちらの先端に乗り移る</span>
+jj abandon <span class="p">&lt;不要な方&gt;</span>             <span class="c"># それでも残ったら捨てる</span></code></pre></div>
+    <p class="note tip"><b>空で説明なしの作業コピーは、離れた瞬間に自動で破棄されます</b>(auto-abandon)。多くの場合 <code>jj edit</code> か <code>jj new main</code> するだけで枝分かれは消えます。</p>
+  </article>
 </div>
 
 </section>
