@@ -32,6 +32,13 @@ code{font-family:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
   border-radius:9px;padding:9px 16px;cursor:pointer;font-size:.9rem;font-weight:700;
 }
 .toolbar button:hover{background:#3f4fc0}
+.toolbar .lang-switch{
+  display:flex;align-items:center;gap:4px;border:1px solid var(--line);
+  background:var(--paper);border-radius:9px;padding:5px 10px;
+}
+.toolbar .lang-switch select{
+  border:none;background:transparent;color:var(--ink);font-size:.85rem;outline:none;cursor:pointer;
+}
 
 /* A4 横 = 297mm × 210mm。画面ではその比率の「紙」を見せる。 */
 .sheet{
@@ -100,6 +107,12 @@ code{font-family:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
   <a class="back" href="index.html">← サイトへ戻る</a>
   <span class="spacer"></span>
   <span class="hint">A4 横1枚 · ブラウザの印刷で「PDFに保存」を選択</span>
+    <div class="lang-switch">
+      <label class="lang-icon" for="langSelect" aria-label="言語切替">🌐</label>
+      <select id="langSelect" aria-label="言語切替" onchange="location.href=this.selectedOptions[0].dataset.href">
+      <option value="ja" data-href="print.html" selected>日本語</option>
+      </select>
+    </div>
   <button type="button" onclick="window.print()">🖨 PDFとして保存</button>
 </div>
 
