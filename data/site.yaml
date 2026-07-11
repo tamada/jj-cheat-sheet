@@ -5,6 +5,7 @@ defaultTheme: dark
 title: "Jujutsu (jj) チートシート — GitHub Flow をマスターする"
 description: "Jujutsu (jj) のレベル別チートシート。初学者からGit熟練者まで、GitHub Flow での pull / push / ブランチ運用を jj でどう扱うかを整理。"
 
+repository: "https://github.com/tamada/jj-cheat-sheet"
 brand: "Jujutsu チートシート"
 searchPlaceholder: "コマンドや悩みで検索(例: pull, push, ブランチ, 取り消し)"
 
