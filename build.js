@@ -1,17 +1,22 @@
 #!/usr/bin/env node
 /*
- * build.js — データ(data/*.yaml)+ デザイン(このファイルのテンプレート & src/)
+ * build.js — データ(data/<locale>/*.yaml)+ デザイン(このファイルのテンプレート & src/)
  * から公開物 docs/ を生成する、依存最小のビルドスクリプト。
  *
- *   data/site.yaml            サイト全体の設定・ヘッダ・タブ・フッター
- *   data/{beginner,...}.yaml  レベル別コンテンツ(card / steps / compare / level-head)
- *   src/style.css, src/script.js  デザイン資産(原本)。docs/ へコピーされる。
+ *   data/<locale>/site.yaml            サイト全体の設定・ヘッダ・タブ・フッター
+ *   data/<locale>/{beginner,...}.yaml  レベル別コンテンツ(card / steps / compare / level-head)
+ *   src/style.css, src/script.js       デザイン資産(原本)。各ロケールの docs/ へコピーされる。
  *
- * 生成物:
- *   docs/index.html
- *   docs/levels/{beginner,intermediate,advanced}.html
- *   docs/print.html            1枚もの印刷用チートシート(A4 横・PDF 出力用)
- *   docs/style.css, docs/script.js
+ * ロケール(言語)は data/ 直下のディレクトリを自動検出する。デフォルト
+ * ロケール(DEFAULT_LOCALE、現状 "ja")は docs/ 直下に、それ以外のロケールは
+ * docs/<locale>/ 以下に生成する。新しい言語を追加するには data/<locale>/ を
+ * 作って `npm run build` するだけでよい(README 参照)。
+ *
+ * 生成物(ロケールごとに、上記の出力先へ):
+ *   index.html
+ *   levels/{beginner,intermediate,advanced}.html
+ *   print.html            1枚もの印刷用チートシート(A4 横・PDF 出力用)
+ *   style.css, script.js
  *
  * コンテンツ中の <b> / <code> / <span class="p"> などのインライン HTML は
  * データ内に文字列としてそのまま保持し、ここでは一切エスケープしない
@@ -28,8 +33,57 @@ const DATA = path.join(ROOT, 'data');
 const SRC = path.join(ROOT, 'src');
 const DOCS = path.join(ROOT, 'docs');
 
-function readYaml(file) {
-  return yaml.load(fs.readFileSync(path.join(DATA, file), 'utf8'));
+// data/ 配下でデフォルト扱いにするロケール。docs/ 直下に出力される。
+const DEFAULT_LOCALE = 'ja';
+
+function readYaml(locale, file) {
+  return yaml.load(fs.readFileSync(path.join(DATA, locale, file), 'utf8'));
+}
+
+// data/ 直下のディレクトリ一覧 = 利用可能なロケール。
+// デフォルトロケールを先頭に、それ以外はアルファベット順。
+function detectLocales() {
+  const names = fs
+    .readdirSync(DATA, { withFileTypes: true })
+    .filter((d) => d.isDirectory())
+    .map((d) => d.name);
+  return names.sort((a, b) => {
+    if (a === DEFAULT_LOCALE) return -1;
+    if (b === DEFAULT_LOCALE) return 1;
+    return a.localeCompare(b);
+  });
+}
+
+// ロケールごとの出力先ディレクトリ。デフォルトロケールは docs/ 直下、
+// それ以外は docs/<locale>/。
+function outDir(locale) {
+  return locale === DEFAULT_LOCALE ? DOCS : path.join(DOCS, locale);
+}
+
+// fromLocale で生成中のページから、toLocale の同名ファイルへの相対リンク。
+function localeHref(fromLocale, toLocale, filename) {
+  const rel = path.relative(outDir(fromLocale), path.join(outDir(toLocale), filename));
+  return rel.split(path.sep).join('/');
+}
+
+// 言語切替 UI(🌐 + <select>)。ロケールが1つしかなくても常に表示する。
+// 選択すると該当ロケールの同名ページへ遷移する(script.js に依存しない
+// よう、onchange はインラインで自己完結させる)。
+function renderLangSwitch(langLabel, options) {
+  const opts = options
+    .map(
+      (o) =>
+        `      <option value="${o.code}" data-href="${o.href}"${o.current ? ' selected' : ''}>${o.label}</option>`
+    )
+    .join('\n');
+  return [
+    `    <div class="lang-switch">`,
+    `      <label class="lang-icon" for="langSelect" aria-label="${langLabel}">🌐</label>`,
+    `      <select id="langSelect" aria-label="${langLabel}" onchange="location.href=this.selectedOptions[0].dataset.href">`,
+    opts,
+    `      </select>`,
+    `    </div>`,
+  ].join('\n');
 }
 
 // ---------- レベルフラグメントのテンプレート ----------
@@ -166,7 +220,7 @@ function renderLevel(level, meta) {
 
 // ---------- index.html のテンプレート ----------
 
-function renderIndex(site) {
+function renderIndex(site, langOptions) {
   const tabs = site.tabs
     .map((t) =>
       [
@@ -182,6 +236,9 @@ function renderIndex(site) {
   const links = site.footer.links
     .map((l) => `    <a href="${l.href}" target="_blank" rel="noopener">${l.text}</a>`)
     .join('\n');
+
+  const langSwitch = renderLangSwitch(site.langSwitchLabel, langOptions);
+  const i18n = JSON.stringify(site.ui || {});
 
   return `<!DOCTYPE html>
 <html lang="${site.lang}" data-theme="${site.defaultTheme}">
@@ -202,9 +259,10 @@ function renderIndex(site) {
       <input id="search" type="search" placeholder="${site.searchPlaceholder}" autocomplete="off">
       <kbd>/</kbd>
     </div>
-    <a class="pdf-link" href="print.html" title="1枚もの印刷用チートシート(PDF 出力可)">🖨 PDF</a>
-    <button id="themeBtn" title="テーマ切替">🌙</button>
-    <a class="github-link" href="${site.repository}" target="_blank" rel="noopener" aria-label="GitHub リポジトリ">
+    <a class="pdf-link" href="print.html" title="${site.pdfLinkTitle}">${site.pdfLinkText}</a>
+${langSwitch}
+    <button id="themeBtn" title="${site.themeToggleTitle}">🌙</button>
+    <a class="github-link" href="${site.repository}" target="_blank" rel="noopener" aria-label="${site.githubLinkLabel}">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
         <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.012 8.012 0 0 0 16 8c0-4.42-3.58-8-8-8z"/>
       </svg>
@@ -233,6 +291,7 @@ ${links}
   <p>${site.footer.note}</p>
 </footer>
 
+<script>window.I18N = ${i18n};</script>
 <script src="script.js" defer></script>
 </body>
 </html>
@@ -268,14 +327,15 @@ function renderPrintGroup(group) {
   ].join('\n');
 }
 
-function renderPrint(print) {
+function renderPrint(print, lang, langLabel, langOptions) {
   const groups = print.groups.map(renderPrintGroup).join('\n');
+  const langSwitch = renderLangSwitch(langLabel, langOptions);
   return `<!DOCTYPE html>
-<html lang="ja">
+<html lang="${lang}">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${print.title} — 印刷用1枚チートシート</title>
+<title>${print.title} — ${print.titleSuffix}</title>
 <meta name="description" content="${print.subtitle}">
 <style>
 /* ===== 画面(プレビュー) ===== */
@@ -304,6 +364,13 @@ code{font-family:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
   border-radius:9px;padding:9px 16px;cursor:pointer;font-size:.9rem;font-weight:700;
 }
 .toolbar button:hover{background:#3f4fc0}
+.toolbar .lang-switch{
+  display:flex;align-items:center;gap:4px;border:1px solid var(--line);
+  background:var(--paper);border-radius:9px;padding:5px 10px;
+}
+.toolbar .lang-switch select{
+  border:none;background:transparent;color:var(--ink);font-size:.85rem;outline:none;cursor:pointer;
+}
 
 /* A4 横 = 297mm × 210mm。画面ではその比率の「紙」を見せる。 */
 .sheet{
@@ -369,10 +436,11 @@ code{font-family:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
 <body>
 
 <div class="toolbar">
-  <a class="back" href="index.html">← サイトへ戻る</a>
+  <a class="back" href="index.html">${print.backLabel}</a>
   <span class="spacer"></span>
-  <span class="hint">A4 横1枚 · ブラウザの印刷で「PDFに保存」を選択</span>
-  <button type="button" onclick="window.print()">🖨 PDFとして保存</button>
+  <span class="hint">${print.printHint}</span>
+${langSwitch}
+  <button type="button" onclick="window.print()">${print.printButton}</button>
 </div>
 
 <div class="sheet">
@@ -399,32 +467,60 @@ function mkdirp(dir) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-function main() {
-  const site = readYaml('site.yaml');
+// ロケール code -> { label, lang } のメタ情報(言語切替 UI 用に全ロケール分必要)。
+function readLocaleMeta(locales) {
+  return locales.map((code) => {
+    const site = readYaml(code, 'site.yaml');
+    return { code, label: site.localeLabel || code, lang: site.lang || code };
+  });
+}
 
-  mkdirp(DOCS);
-  mkdirp(path.join(DOCS, 'levels'));
+function buildLocale(locale, localeMeta) {
+  const site = readYaml(locale, 'site.yaml');
+  const dir = outDir(locale);
+  mkdirp(dir);
+  mkdirp(path.join(dir, 'levels'));
+
+  const langOptionsFor = (filename) =>
+    localeMeta.map((m) => ({
+      code: m.code,
+      label: m.label,
+      href: localeHref(locale, m.code, filename),
+      current: m.code === locale,
+    }));
 
   // index.html
-  fs.writeFileSync(path.join(DOCS, 'index.html'), renderIndex(site));
+  fs.writeFileSync(path.join(dir, 'index.html'), renderIndex(site, langOptionsFor('index.html')));
 
   // print.html(1枚もの印刷用チートシート)
-  const print = readYaml('print.yaml');
-  fs.writeFileSync(path.join(DOCS, 'print.html'), renderPrint(print));
+  const print = readYaml(locale, 'print.yaml');
+  fs.writeFileSync(
+    path.join(dir, 'print.html'),
+    renderPrint(print, site.lang, site.langSwitchLabel, langOptionsFor('print.html'))
+  );
 
   // levels/*.html
   site.tabs.forEach((tab) => {
-    const level = readYaml(`${tab.file}.yaml`);
+    const level = readYaml(locale, `${tab.file}.yaml`);
     const html = renderLevel(level, tab);
-    fs.writeFileSync(path.join(DOCS, 'levels', `${tab.file}.html`), html);
+    fs.writeFileSync(path.join(dir, 'levels', `${tab.file}.html`), html);
   });
 
-  // design assets: src -> docs
+  // design assets: src -> 各ロケールの出力先(現状はロケール間で共通の1ファイル)
   ['style.css', 'script.js'].forEach((f) => {
-    fs.copyFileSync(path.join(SRC, f), path.join(DOCS, f));
+    fs.copyFileSync(path.join(SRC, f), path.join(dir, f));
   });
+}
 
-  console.log('built: docs/index.html, docs/print.html, docs/levels/*.html, docs/style.css, docs/script.js');
+function main() {
+  mkdirp(DOCS);
+  const locales = detectLocales();
+  const localeMeta = readLocaleMeta(locales);
+
+  locales.forEach((locale) => buildLocale(locale, localeMeta));
+
+  const outPaths = locales.map((l) => (l === DEFAULT_LOCALE ? 'docs/' : `docs/${l}/`)).join(', ');
+  console.log(`built ${locales.length} locale(s) [${locales.join(', ')}] -> ${outPaths}`);
 }
 
 main();

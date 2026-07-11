@@ -5,6 +5,16 @@
     set(k,v){try{localStorage.setItem(k,v)}catch(e){}}
   };
 
+  /* ----- i18n: build.js が window.I18N として埋め込む実行時 UI 文字列。
+     未設定(=読み込まれていない)場合は従来どおりの日本語にフォールバックする。 */
+  const I18N=Object.assign({
+    copyTitle:'コピー',copyIcon:'⧉',copyDone:'✓',
+    loadError:'レベル別コンテンツの読み込みに失敗しました',
+    searchResultsTemplate:'「{q}」の検索結果: {n} 件(全レベル横断)',
+    searchNoResultsTemplate:'「{q}」に一致する項目がありません'
+  },window.I18N||{});
+  function fmt(tpl,vars){return tpl.replace(/\{(\w+)\}/g,(_,k)=>vars[k])}
+
   const LEVEL_FILES=['levels/beginner.html','levels/intermediate.html','levels/advanced.html'];
 
   /* ----- theme (doesn't depend on level fragments) ----- */
@@ -20,7 +30,7 @@
       initLevels();
     })
     .catch(err=>{
-      console.error('レベル別コンテンツの読み込みに失敗しました', err);
+      console.error(I18N.loadError, err);
     });
 
   function initLevels(){
@@ -36,13 +46,13 @@
     /* ----- copy buttons ----- */
     $$('.cmd').forEach(c=>{
       const b=document.createElement('button');
-      b.className='copy';b.textContent='⧉';b.title='コピー';
+      b.className='copy';b.textContent=I18N.copyIcon;b.title=I18N.copyTitle;
       b.addEventListener('click',()=>{
         const raw=[...c.querySelectorAll('code')].map(x=>x.textContent).join('\n');
         const txt=raw.split('\n').filter(l=>!/^\s*#/.test(l)).join('\n').trim();
         (navigator.clipboard?navigator.clipboard.writeText(txt):Promise.reject()).then(()=>{
-          b.textContent='✓';b.classList.add('ok');
-          setTimeout(()=>{b.textContent='⧉';b.classList.remove('ok')},1200);
+          b.textContent=I18N.copyDone;b.classList.add('ok');
+          setTimeout(()=>{b.textContent=I18N.copyIcon;b.classList.remove('ok')},1200);
         }).catch(()=>{});
       });
       c.appendChild(b);
@@ -91,7 +101,9 @@
       });
       $$('.level-head').forEach(el=>el.classList.add('hidden'));
       info.style.display='block';
-      info.textContent=hits?`「${qRaw}」の検索結果: ${hits} 件(全レベル横断)`:`「${qRaw}」に一致する項目がありません`;
+      info.textContent=hits
+        ?fmt(I18N.searchResultsTemplate,{q:qRaw,n:hits})
+        :fmt(I18N.searchNoResultsTemplate,{q:qRaw});
     }
     input.addEventListener('input',()=>runSearch(input.value));
     document.addEventListener('keydown',e=>{

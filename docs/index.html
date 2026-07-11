@@ -18,6 +18,12 @@
       <kbd>/</kbd>
     </div>
     <a class="pdf-link" href="print.html" title="1枚もの印刷用チートシート(PDF 出力可)">🖨 PDF</a>
+    <div class="lang-switch">
+      <label class="lang-icon" for="langSelect" aria-label="言語切替">🌐</label>
+      <select id="langSelect" aria-label="言語切替" onchange="location.href=this.selectedOptions[0].dataset.href">
+      <option value="ja" data-href="index.html" selected>日本語</option>
+      </select>
+    </div>
     <button id="themeBtn" title="テーマ切替">🌙</button>
     <a class="github-link" href="https://github.com/tamada/jj-cheat-sheet" target="_blank" rel="noopener" aria-label="GitHub リポジトリ">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16" fill="currentColor">
@@ -65,6 +71,7 @@
   <p>jj v0.42 系(2026年6月リリース)準拠 · 本サイトは非公式のチートシートです</p>
 </footer>
 
+<script>window.I18N = {"copyTitle":"コピー","copyIcon":"⧉","copyDone":"✓","loadError":"レベル別コンテンツの読み込みに失敗しました","searchResultsTemplate":"「{q}」の検索結果: {n} 件(全レベル横断)","searchNoResultsTemplate":"「{q}」に一致する項目がありません"};</script>
 <script src="script.js" defer></script>
 </body>
 </html>

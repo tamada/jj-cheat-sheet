@@ -1,5 +1,12 @@
 # サイト全体の設定とレイアウト(データ)。
 # デザイン(HTML テンプレート)は build.js が持ち、ここには「中身」だけを書く。
+#
+# このファイルは data/<locale>/site.yaml として、ロケール(言語)ごとに 1 つ置く。
+# locale はディレクトリ名(例: ja)と一致させること。build.js が data/ 配下の
+# ディレクトリを自動検出し、ロケールごとに docs/(デフォルトロケール)または
+# docs/<locale>/(その他)を生成する。新しい言語を追加する手順は README 参照。
+locale: ja
+localeLabel: "日本語"
 lang: ja
 defaultTheme: dark
 title: "Jujutsu (jj) チートシート — GitHub Flow をマスターする"
@@ -8,10 +15,27 @@ description: "Jujutsu (jj) のレベル別チートシート。初学者からGi
 repository: "https://github.com/tamada/jj-cheat-sheet"
 brand: "Jujutsu チートシート"
 searchPlaceholder: "コマンドや悩みで検索(例: pull, push, ブランチ, 取り消し)"
+themeToggleTitle: "テーマ切替"
+langSwitchLabel: "言語切替"
+pdfLinkText: "🖨 PDF"
+pdfLinkTitle: "1枚もの印刷用チートシート(PDF 出力可)"
+githubLinkLabel: "GitHub リポジトリ"
 
 hero:
   title: "Jujutsu で GitHub Flow を乗りこなす"
   sub: 'Git 互換の次世代バージョン管理システム <b>jj</b> のレベル別チートシート。あなたのレベルを選んでください。検索はすべてのレベルを横断します。'
+
+# script.js が実行時に組み立てる UI 文字列(コピー・検索結果など)。
+# build.js が docs/(<locale>/)index.html に window.I18N として埋め込み、
+# script.js はそれを読んで表示する(未設定時は script.js 内蔵の日本語文言に
+# フォールバックする)。
+ui:
+  copyTitle: "コピー"
+  copyIcon: "⧉"
+  copyDone: "✓"
+  loadError: "レベル別コンテンツの読み込みに失敗しました"
+  searchResultsTemplate: "「{q}」の検索結果: {n} 件(全レベル横断)"
+  searchNoResultsTemplate: "「{q}」に一致する項目がありません"
 
 # タブ(レベル選択)。file は data/ 以下のレベルデータファイル、
 # 生成される docs/levels/<out>.html のファイル名も兼ねる。
