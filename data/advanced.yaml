@@ -1,0 +1,201 @@
+# レベル3: Git 熟練者。コンテンツ(データ)のみ。
+level: 3
+label: "熟練者"
+emoji: "🌳"
+head:
+  title: "Git 熟練者 — jj を武器にする"
+  body: '<code>rebase -i</code> / <code>reflog</code> / <code>rerere</code> でやっていたことは、jj では一級市民です。revset で歴史を問い合わせ、自動リベースを味方に付け、スタック PR を量産しましょう。'
+
+sections:
+  - heading: "🎯 revset — 歴史へのクエリ言語"
+    note: "-r を取るすべてのコマンドで使える"
+    cards:
+      - tags: "revset 基本 演算子 記法"
+        title: "基本記法"
+        content:
+          - cmd: |-
+              @           <span class="c"># 作業コピー</span>
+              @-          <span class="c"># その親(@-- で祖父母)</span>
+              x::y        <span class="c"># x から y までの経路(x:: で子孫全部, ::y で祖先全部)</span>
+              x..y        <span class="c"># y の祖先から x の祖先を除いたもの(git の x..y)</span>
+              x | y  x & y  ~x   <span class="c"># 和・積・否定</span>
+      - tags: "revset 関数 trunk mine bookmarks"
+        title: "よく使う関数"
+        content:
+          - cmd: |-
+              trunk()             <span class="c"># main/master(自動判定)</span>
+              mine()              <span class="c"># 自分が author</span>
+              bookmarks()         <span class="c"># ローカル bookmark が付いた rev</span>
+              remote_bookmarks()  <span class="c"># リモート bookmark が付いた rev</span>
+              conflicts()         <span class="c"># コンフリクトを含む rev</span>
+              heads(x)            <span class="c"># x のうち先端のみ</span>
+              description(<span class="p">"fix"</span>)  <span class="c"># メッセージで検索</span>
+      - tags: "revset 実用 レシピ 例"
+        title: "実用レシピ"
+        content:
+          - cmd: |-
+              <span class="c"># push していない自分の仕事を一望</span>
+              jj log -r <span class="p">'mine() & ~::remote_bookmarks()'</span>
+
+              <span class="c"># main に入っていない全ブランチ</span>
+              jj log -r <span class="p">'bookmarks() & ~::trunk()'</span>
+
+              <span class="c"># 今の作業の「ブランチ全体」</span>
+              jj log -r <span class="p">'trunk()..@'</span>
+
+  - heading: "🔪 履歴の外科手術"
+    note: "すべて自動リベース付き・すべて undo 可能"
+    cards:
+      - tags: "absorb 自動 振り分け fixup autosquash"
+        title: '<code>jj absorb</code> — 修正の自動振り分け <span class="badge rec">神機能</span>'
+        content:
+          - cmd: |-
+              <span class="c"># スタック上の複数コミットに跨がる修正をしたら…</span>
+              jj absorb    <span class="c"># 各行の変更を「その行を最後に触ったコミット」へ自動 squash</span>
+          - note: 'git の <code>absorb + rebase --autosquash</code> が組み込みで、かつ止まりません。レビュー指摘対応が一撃で終わります。'
+      - tags: "rebase 挿入 insert before after"
+        title: "rebase の全形態"
+        content:
+          - cmd: |-
+              jj rebase -r X -o Y    <span class="c"># X だけを Y の上へ(子は繋ぎ直し)</span>
+              jj rebase -s X -o Y    <span class="c"># X とその子孫ごと</span>
+              jj rebase -b X -o Y    <span class="c"># X を含むブランチ一式</span>
+              jj rebase -r X -A Y    <span class="c"># Y の「後」に挿入(-B で「前」)</span>
+          - note: '<code>-o/--onto</code> は旧 <code>-d/--destination</code>。挿入系(-A/-B)は git rebase -i の並べ替えの代替です。'
+      - tags: "split parallelize 分割 並列化"
+        title: "分割・並列化"
+        content:
+          - cmd: |-
+              jj split -r X             <span class="c"># X を対話的に2つへ</span>
+              jj split -r X --parallel  <span class="c"># 直列ではなく兄弟に分割</span>
+              jj parallelize X Y Z      <span class="c"># 直列のコミット群を兄弟化(独立PRへ)</span>
+      - tags: "diffedit 内容 編集 過去"
+        title: "過去コミットの内容を直接編集"
+        content:
+          - cmd: |-
+              jj diffedit -r X    <span class="c"># X の diff 自体を対話編集</span>
+              jj edit X           <span class="c"># X を作業コピーにして普通に編集</span>
+      - tags: "evolog 変遷 コミットの歴史"
+        title: "コミット自身の変遷を追う"
+        content:
+          - cmd: 'jj evolog -r X    <span class="c"># X が squash や rebase でどう変わってきたか</span>'
+          - note: 'change ID は不変なので「このコミット、昨日はどんな中身だった?」に答えられます。git には無い概念です。'
+      - tags: "op log restore diff タイムマシン"
+        title: "op log — リポジトリのタイムマシン"
+        content:
+          - cmd: |-
+              jj op log             <span class="c"># 全操作の履歴</span>
+              jj op diff --op X     <span class="c"># その操作で何が変わったか</span>
+              jj op restore X       <span class="c"># リポジトリ全体をその時点へ</span>
+              jj undo               <span class="c"># = 直前1操作の op restore</span>
+
+  - heading: "📚 スタック PR(Stacked PRs)"
+    wide: true
+    cards:
+      - tags: "stacked pr スタック 積み上げ 依存 分割レビュー"
+        title: "依存し合う PR を積み上げて出す"
+        content:
+          - p: 'jj では「スタックの各段に bookmark を貼る」だけ。<b>下の段を直せば上の段は自動で追従</b>し、push も一括です。'
+          - cmd: |-
+              <span class="c"># base → part1 → part2 と積む</span>
+              jj new main -m <span class="p">"refactor: 下準備"</span>   ; <span class="c"># …作業…</span> jj commit
+              jj new -m <span class="p">"feat: 本体"</span>              ; <span class="c"># …作業…</span> jj commit
+
+              <span class="c"># 各段に bookmark を貼って一括 push</span>
+              jj git push --named <span class="p">refactor-base</span>=@-- --named <span class="p">feat-main</span>=@-
+
+              <span class="c"># GitHub で PR を2本作成(feat-main の base を refactor-base に)</span>
+
+              <span class="c"># 下の段にレビューが入ったら:</span>
+              jj new <span class="p">refactor-base</span> ; <span class="c"># …修正…</span> ; jj squash
+              jj git push    <span class="c"># 上の段も自動リベース済みで一緒に更新される</span>
+          - tip: '下の PR がマージされたら <code>jj git fetch</code> → <code>jj rebase -b @ -o main</code> → <code>jj git push</code> で上の PR を main 直付けに。'
+
+  - heading: "🕸 メガマージ & 高度な芸当"
+    cards:
+      - tags: "megamerge メガマージ 複数ブランチ 同時 テスト"
+        title: "メガマージ — 全ブランチを同時に試す"
+        content:
+          - cmd: |-
+              jj new <span class="p">feat-a feat-b feat-c</span>   <span class="c"># 3本を束ねた作業コピー</span>
+              <span class="c"># 全部入りでビルド・動作確認。修正したら:</span>
+              jj squash --into <span class="p">feat-a</span>       <span class="c"># 該当ブランチへ送り返す</span>
+          - note: '「レビュー待ちブランチを全部載せた環境で開発」という jj 名物ワークフロー。各ブランチは独立したまま PR に出せます。'
+      - tags: "workspace ワークツリー worktree 並行"
+        title: "複数ワークスペース(git worktree)"
+        content:
+          - cmd: |-
+              jj workspace add <span class="p">../repo-hotfix</span>
+              jj workspace list
+          - note: 'op log と歴史は共有、作業コピー(@)だけ別。緊急対応に。'
+      - tags: "divergent 分岐 change id 重複 対処"
+        title: "divergent change の解消"
+        content:
+          - p: '同じ change ID が2つの実体を持つと <code>??</code> 付きで表示されます(undo 後の再編集などで発生)。'
+          - cmd: |-
+              jj abandon <span class="p">&lt;commit-id&gt;</span>     <span class="c"># 要らない側を捨てる(commit ID で指定)</span>
+              <span class="c"># または両方残す: jj duplicate で別 change に</span>
+      - tags: "colocate git 併用 相互運用"
+        title: "git との併用(colocated)"
+        content:
+          - cmd: |-
+              git log --oneline    <span class="c"># git コマンドはそのまま動く</span>
+              jj git import        <span class="c"># git 側での変更を jj へ(通常は自動)</span>
+              jj git export        <span class="c"># jj 側の状態を git refs へ(通常は自動)</span>
+          - note: 'git HEAD は常に detached。IDE の「現在のブランチ表示」が空でも正常です。'
+
+  - heading: "⚙️ 設定レシピ(~/.config/jj/config.toml)"
+    cards:
+      - tags: "tug alias エイリアス bookmark 自動 前進"
+        title: '定番エイリアス <code>jj tug</code> <span class="badge rec">必携</span>'
+        content:
+          - cmd: |-
+              [aliases]
+              tug = [<span class="p">"bookmark"</span>, <span class="p">"move"</span>, <span class="p">"--from"</span>, <span class="p">"closest_bookmark(@)"</span>, <span class="p">"--to"</span>, <span class="p">"@-"</span>]
+
+              [revset-aliases]
+              <span class="p">"closest_bookmark(to)"</span> = <span class="p">"heads(::to & bookmarks())"</span>
+          - note: '「直近の bookmark を @- まで引っ張り上げる」。commit → <code>jj tug</code> → <code>jj git push</code> が黄金リズムになります。'
+      - tags: "immutable 保護 main 書き換え禁止"
+        title: "保護範囲のカスタマイズ"
+        content:
+          - cmd: |-
+              [revset-aliases]
+              <span class="p">"immutable_heads()"</span> = <span class="p">"builtin_immutable_heads() | remote_bookmarks()"</span>
+          - note: '既定では trunk と タグ等が書き換え禁止(immutable)。push 済みコミット全体を保護したい場合の例です。'
+      - tags: "fetch push リモート 複数 fork upstream"
+        title: "fork 運用(upstream + origin)"
+        content:
+          - cmd: |-
+              [git]
+              fetch = [<span class="p">"upstream"</span>, <span class="p">"origin"</span>]
+              push = <span class="p">"origin"</span>
+          - note: 'upstream から取り込み、自分の fork に push。<code>jj git clone --remote upstream URL</code> と組み合わせて。'
+      - tags: "設定 便利 diff エディタ delta"
+        title: "その他の定番設定"
+        content:
+          - cmd: |-
+              [ui]
+              default-command = <span class="p">"log"</span>       <span class="c"># jj 単体で log 表示</span>
+              diff-editor = <span class="p">":builtin"</span>      <span class="c"># split/squash -i の対話UI</span>
+
+              [ui.pager]
+              command = [<span class="p">"delta"</span>]           <span class="c"># diff を delta で表示</span>
+
+              [templates]
+              draft_commit_description = <span class="p">'concat(description, "\n", diff.stat(72))'</span>
+      - tags: "fix formatter リンタ 自動整形"
+        title: '<code>jj fix</code> — 全コミット自動整形'
+        content:
+          - cmd: |-
+              [fix.tools.prettier]
+              command = [<span class="p">"npx"</span>, <span class="p">"prettier"</span>, <span class="p">"--stdin-filepath"</span>, <span class="p">"$path"</span>]
+              patterns = [<span class="p">"glob:'**/*.ts'"</span>]
+          - cmd: 'jj fix    <span class="c"># mutable な全コミットにフォーマッタを適用(子孫は自動リベース)</span>'
+      - tags: "private 秘密 push 防止 wip"
+        title: "WIP コミットの push 事故防止"
+        content:
+          - cmd: |-
+              [git]
+              private-commits = <span class="p">'description(glob:"wip:*") | description(glob:"private:*")'</span>
+          - note: 'この revset に当たるコミットを含む push はエラーになります。'
