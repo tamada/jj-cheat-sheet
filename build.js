@@ -1,0 +1,425 @@
+#!/usr/bin/env node
+/*
+ * build.js — データ(data/*.yaml)+ デザイン(このファイルのテンプレート & src/)
+ * から公開物 docs/ を生成する、依存最小のビルドスクリプト。
+ *
+ *   data/site.yaml            サイト全体の設定・ヘッダ・タブ・フッター
+ *   data/{beginner,...}.yaml  レベル別コンテンツ(card / steps / compare / level-head)
+ *   src/style.css, src/script.js  デザイン資産(原本)。docs/ へコピーされる。
+ *
+ * 生成物:
+ *   docs/index.html
+ *   docs/levels/{beginner,intermediate,advanced}.html
+ *   docs/print.html            1枚もの印刷用チートシート(A4 横・PDF 出力用)
+ *   docs/style.css, docs/script.js
+ *
+ * コンテンツ中の <b> / <code> / <span class="p"> などのインライン HTML は
+ * データ内に文字列としてそのまま保持し、ここでは一切エスケープしない
+ * (=データが「中身」、テンプレートが「見た目」)。
+ */
+'use strict';
+
+const fs = require('fs');
+const path = require('path');
+const yaml = require('js-yaml');
+
+const ROOT = __dirname;
+const DATA = path.join(ROOT, 'data');
+const SRC = path.join(ROOT, 'src');
+const DOCS = path.join(ROOT, 'docs');
+
+function readYaml(file) {
+  return yaml.load(fs.readFileSync(path.join(DATA, file), 'utf8'));
+}
+
+// ---------- レベルフラグメントのテンプレート ----------
+
+function renderSecHead(section) {
+  const note = section.note ? `<span class="sec-note">${section.note}</span>` : '';
+  return `<div class="sec-h"><h2>${section.heading}</h2>${note}</div>`;
+}
+
+function renderCmd(code) {
+  return `    <div class="cmd"><pre><code>${code}</code></pre></div>`;
+}
+
+function renderNote(text, variant) {
+  const cls = variant ? `note ${variant}` : 'note';
+  return `    <p class="${cls}">${text}</p>`;
+}
+
+function renderDetails(d) {
+  return [
+    `    <details><summary>${d.summary}</summary>`,
+    `      <div class="d-body">${d.body}</div>`,
+    `    </details>`,
+  ].join('\n');
+}
+
+// 通常カード: h3 + 順序付きの content 要素(p / cmd / note / tip / warn / details)
+function renderCardContent(item) {
+  if ('p' in item) return `    <p>${item.p}</p>`;
+  if ('cmd' in item) return renderCmd(item.cmd);
+  if ('note' in item) return renderNote(item.note);
+  if ('tip' in item) return renderNote(item.tip, 'tip');
+  if ('warn' in item) return renderNote(item.warn, 'warn');
+  if ('details' in item) return renderDetails(item.details);
+  throw new Error('未知の content 要素: ' + JSON.stringify(item));
+}
+
+function renderStep(step) {
+  const parts = [`      <li>`, `        <h4>${step.h4}</h4>`];
+  if (step.cmd) parts.push(`        <div class="cmd"><pre><code>${step.cmd}</code></pre></div>`);
+  if (step.sub) parts.push(`        <p class="step-sub">${step.sub}</p>`);
+  if (step.details) {
+    parts.push(`        <details><summary>${step.details.summary}</summary>`);
+    parts.push(`          <div class="d-body">${step.details.body}</div>`);
+    parts.push(`        </details>`);
+  }
+  parts.push(`      </li>`);
+  return parts.join('\n');
+}
+
+function renderStepsCard(card) {
+  return [
+    `  <article class="card" data-tags="${card.tags}">`,
+    `    <ol class="steps">`,
+    card.steps.map(renderStep).join('\n'),
+    `    </ol>`,
+    `  </article>`,
+  ].join('\n');
+}
+
+function renderCompareCard(card) {
+  const th = card.columns.map((c) => `<th>${c}</th>`).join('');
+  const rows = card.rows
+    .map(
+      (r) =>
+        `    <tr data-tags="${r.tags}"><td>${r.want}</td><td class="git">${r.git}</td><td>${r.jj}</td></tr>`
+    )
+    .join('\n');
+  return [
+    `<div class="grid wide"><article class="card" data-tags="${card.tags}">`,
+    `<div class="tbl-scroll">`,
+    `<table class="compare">`,
+    `  <thead><tr>${th}</tr></thead>`,
+    `  <tbody>`,
+    rows,
+    `  </tbody>`,
+    `</table>`,
+    `</div>`,
+    `</article></div>`,
+  ].join('\n');
+}
+
+function renderNormalCard(card) {
+  const parts = [`  <article class="card" data-tags="${card.tags}">`];
+  if (card.title) parts.push(`    <h3>${card.title}</h3>`);
+  (card.content || []).forEach((item) => parts.push(renderCardContent(item)));
+  parts.push(`  </article>`);
+  return parts.join('\n');
+}
+
+function renderCard(card) {
+  if (card.type === 'steps') return renderStepsCard(card);
+  if (card.type === 'compare') return renderCompareCard(card);
+  return renderNormalCard(card);
+}
+
+function renderSection(section) {
+  // compare カードは grid ラッパを自前で持つので特別扱い
+  if (section.cards.length === 1 && section.cards[0].type === 'compare') {
+    return [renderSecHead(section), renderCompareCard(section.cards[0])].join('\n');
+  }
+  const gridCls = section.wide ? 'grid wide' : 'grid';
+  return [
+    renderSecHead(section),
+    `<div class="${gridCls}">`,
+    section.cards.map(renderCard).join('\n'),
+    `</div>`,
+  ].join('\n');
+}
+
+function renderLevel(level, meta) {
+  const head = [
+    `<div class="level-head">`,
+    `  <div class="lh-emoji">${level.emoji}</div>`,
+    `  <div>`,
+    `    <h2>${level.head.title}</h2>`,
+    `    <p>${level.head.body}</p>`,
+    `  </div>`,
+    `</div>`,
+  ].join('\n');
+  const sections = level.sections.map(renderSection).join('\n\n');
+  return [
+    `<!-- ================= LEVEL ${level.level}: ${level.label} ================= -->`,
+    `<section class="level" data-level="${level.level}">`,
+    ``,
+    head,
+    ``,
+    sections,
+    ``,
+    `</section>`,
+    ``,
+  ].join('\n');
+}
+
+// ---------- index.html のテンプレート ----------
+
+function renderIndex(site) {
+  const tabs = site.tabs
+    .map((t) =>
+      [
+        `  <button class="tab" role="tab" data-level="${t.level}" aria-selected="${t.selected}">`,
+        `    <div class="t-emoji">${t.emoji}</div>`,
+        `    <div class="t-name">${t.name}</div>`,
+        `    <div class="t-desc">${t.desc}</div>`,
+        `  </button>`,
+      ].join('\n')
+    )
+    .join('\n');
+
+  const links = site.footer.links
+    .map((l) => `    <a href="${l.href}" target="_blank" rel="noopener">${l.text}</a>`)
+    .join('\n');
+
+  return `<!DOCTYPE html>
+<html lang="${site.lang}" data-theme="${site.defaultTheme}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${site.title}</title>
+<meta name="description" content="${site.description}">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="top">
+  <div class="top-inner">
+    <div class="logo"><span class="mark">jj</span><span class="lt">${site.brand}</span></div>
+    <div class="searchbox">
+      <span class="icon">⌕</span>
+      <input id="search" type="search" placeholder="${site.searchPlaceholder}" autocomplete="off">
+      <kbd>/</kbd>
+    </div>
+    <a class="pdf-link" href="print.html" title="1枚もの印刷用チートシート(PDF 出力可)">🖨 PDF</a>
+    <button id="themeBtn" title="テーマ切替">🌙</button>
+  </div>
+</header>
+
+<div class="hero">
+  <h1>${site.hero.title}</h1>
+  <p class="sub">${site.hero.sub}</p>
+</div>
+
+<div class="tabs" role="tablist">
+${tabs}
+</div>
+
+<p id="searchInfo"></p>
+
+<main>
+</main>
+
+<footer>
+  <div class="links">
+${links}
+  </div>
+  <p>${site.footer.note}</p>
+</footer>
+
+<script src="script.js" defer></script>
+</body>
+</html>
+`;
+}
+
+// ---------- print.html(1枚もの印刷用チートシート)のテンプレート ----------
+//
+// A4 横・多段組の古典的チートシート。画面ではプレビューを兼ね、
+// 「PDFとして保存」ボタン(window.print())→ ブラウザの PDF 保存で出力する。
+// スタイルは印刷で確実に1ページへ収めるため、この HTML 内に自己完結で持つ
+// (docs/style.css には依存しない)。
+
+function renderPrintItem(item) {
+  if (typeof item === 'string') {
+    return `      <li class="pnote">${item}</li>`;
+  }
+  if ('git' in item) {
+    return `      <li class="pmap"><code class="git">${item.git}</code><span class="arr">→</span><code>${item.jj}</code></li>`;
+  }
+  const desc = item.desc ? `<span class="pd">${item.desc}</span>` : '';
+  return `      <li><code>${item.cmd}</code>${desc}</li>`;
+}
+
+function renderPrintGroup(group) {
+  return [
+    `  <section class="pgroup">`,
+    `    <h2>${group.heading}</h2>`,
+    `    <ul>`,
+    group.items.map(renderPrintItem).join('\n'),
+    `    </ul>`,
+    `  </section>`,
+  ].join('\n');
+}
+
+function renderPrint(print) {
+  const groups = print.groups.map(renderPrintGroup).join('\n');
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${print.title} — 印刷用1枚チートシート</title>
+<meta name="description" content="${print.subtitle}">
+<style>
+/* ===== 画面(プレビュー) ===== */
+:root{
+  --ink:#1a2030; --dim:#5a6377; --faint:#8b93a7;
+  --accent:#4f5fd6; --accent2:#0d9488;
+  --line:#d7dbe6; --code-bg:#f2f4fa; --code-ink:#233; --paper:#ffffff;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  background:#e9ecf3;color:var(--ink);
+  font-family:"Hiragino Sans","Noto Sans JP",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  line-height:1.35;padding:24px;
+}
+code{font-family:"SF Mono","JetBrains Mono",Menlo,Consolas,monospace}
+
+.toolbar{
+  max-width:1122px;margin:0 auto 16px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;
+}
+.toolbar .back{color:var(--accent);text-decoration:none;font-weight:700;font-size:.9rem}
+.toolbar .back:hover{text-decoration:underline}
+.toolbar .spacer{flex:1}
+.toolbar .hint{color:var(--dim);font-size:.8rem}
+.toolbar button{
+  border:1px solid var(--accent);background:var(--accent);color:#fff;
+  border-radius:9px;padding:9px 16px;cursor:pointer;font-size:.9rem;font-weight:700;
+}
+.toolbar button:hover{background:#3f4fc0}
+
+/* A4 横 = 297mm × 210mm。画面ではその比率の「紙」を見せる。 */
+.sheet{
+  width:297mm;min-height:210mm;margin:0 auto;background:var(--paper);
+  padding:8mm 9mm;box-shadow:0 6px 30px rgba(20,30,80,.18);
+  /* 本文を多段に流し込む。段数は自動で埋まる。 */
+}
+.sheet-head{
+  display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;
+  border-bottom:2px solid var(--accent);padding-bottom:4px;margin-bottom:6px;
+}
+.sheet-head .mark{
+  font-weight:900;color:#fff;background:linear-gradient(135deg,var(--accent),var(--accent2));
+  border-radius:6px;padding:2px 8px;font-size:12pt;letter-spacing:-.5px;
+}
+.sheet-head h1{font-size:14pt;font-weight:900;letter-spacing:-.01em}
+.sheet-head .sub{color:var(--dim);font-size:8pt;flex:1;min-width:120px}
+.sheet-head .meta{color:var(--faint);font-size:7pt;text-align:right;line-height:1.3}
+
+.cols{column-count:4;column-gap:6mm;column-fill:balance}
+
+.pgroup{
+  break-inside:avoid;-webkit-column-break-inside:avoid;
+  margin-bottom:3.5mm;
+}
+.pgroup h2{
+  font-size:8.5pt;font-weight:800;color:var(--accent);
+  border-bottom:1px solid var(--line);padding-bottom:1px;margin-bottom:2px;
+}
+.pgroup ul{list-style:none}
+.pgroup li{
+  font-size:7pt;line-height:1.28;padding:.6px 0;
+  border-bottom:1px dotted #eceef4;
+}
+.pgroup li:last-child{border-bottom:none}
+.pgroup li.pnote{color:var(--dim)}
+.pgroup code{
+  background:var(--code-bg);color:var(--code-ink);
+  padding:.5px 3px;border-radius:3px;font-size:6.7pt;white-space:normal;
+}
+.pgroup li.pnote code{background:none;padding:0}
+.pgroup .pd{display:block;color:var(--dim);font-size:6.6pt;padding-left:2px}
+.pgroup li.pmap{display:flex;align-items:center;gap:3px;flex-wrap:wrap}
+.pgroup li.pmap .git code,.pgroup li.pmap code.git{color:var(--faint)}
+.pgroup li.pmap .arr{color:var(--accent2);font-weight:700}
+.pgroup b{color:var(--ink)}
+
+.foot{margin-top:3mm;border-top:1px solid var(--line);padding-top:2px;color:var(--faint);font-size:6.5pt;text-align:center}
+
+/* ===== 印刷(PDF) ===== */
+@page{ size:A4 landscape; margin:0; }
+@media print{
+  body{background:#fff;padding:0}
+  .toolbar{display:none}
+  .sheet{
+    width:auto;min-height:auto;margin:0;box-shadow:none;
+    padding:6mm 7mm;
+  }
+  .cols{column-gap:5mm}
+}
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <a class="back" href="index.html">← サイトへ戻る</a>
+  <span class="spacer"></span>
+  <span class="hint">A4 横1枚 · ブラウザの印刷で「PDFに保存」を選択</span>
+  <button type="button" onclick="window.print()">🖨 PDFとして保存</button>
+</div>
+
+<div class="sheet">
+  <div class="sheet-head">
+    <span class="mark">jj</span>
+    <h1>${print.title}</h1>
+    <span class="sub">${print.subtitle}</span>
+    <span class="meta">${print.updated}<br>${print.source}</span>
+  </div>
+  <div class="cols">
+${groups}
+  </div>
+  <div class="foot">${print.subtitle} · ${print.updated}</div>
+</div>
+
+</body>
+</html>
+`;
+}
+
+// ---------- 実行 ----------
+
+function mkdirp(dir) {
+  fs.mkdirSync(dir, { recursive: true });
+}
+
+function main() {
+  const site = readYaml('site.yaml');
+
+  mkdirp(DOCS);
+  mkdirp(path.join(DOCS, 'levels'));
+
+  // index.html
+  fs.writeFileSync(path.join(DOCS, 'index.html'), renderIndex(site));
+
+  // print.html(1枚もの印刷用チートシート)
+  const print = readYaml('print.yaml');
+  fs.writeFileSync(path.join(DOCS, 'print.html'), renderPrint(print));
+
+  // levels/*.html
+  site.tabs.forEach((tab) => {
+    const level = readYaml(`${tab.file}.yaml`);
+    const html = renderLevel(level, tab);
+    fs.writeFileSync(path.join(DOCS, 'levels', `${tab.file}.html`), html);
+  });
+
+  // design assets: src -> docs
+  ['style.css', 'script.js'].forEach((f) => {
+    fs.copyFileSync(path.join(SRC, f), path.join(DOCS, f));
+  });
+
+  console.log('built: docs/index.html, docs/print.html, docs/levels/*.html, docs/style.css, docs/script.js');
+}
+
+main();

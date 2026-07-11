@@ -1,0 +1,47 @@
+# サイト全体の設定とレイアウト(データ)。
+# デザイン(HTML テンプレート)は build.js が持ち、ここには「中身」だけを書く。
+lang: ja
+defaultTheme: dark
+title: "Jujutsu (jj) チートシート — GitHub Flow をマスターする"
+description: "Jujutsu (jj) のレベル別チートシート。初学者からGit熟練者まで、GitHub Flow での pull / push / ブランチ運用を jj でどう扱うかを整理。"
+
+brand: "Jujutsu チートシート"
+searchPlaceholder: "コマンドや悩みで検索(例: pull, push, ブランチ, 取り消し)"
+
+hero:
+  title: "Jujutsu で GitHub Flow を乗りこなす"
+  sub: 'Git 互換の次世代バージョン管理システム <b>jj</b> のレベル別チートシート。あなたのレベルを選んでください。検索はすべてのレベルを横断します。'
+
+# タブ(レベル選択)。file は data/ 以下のレベルデータファイル、
+# 生成される docs/levels/<out>.html のファイル名も兼ねる。
+tabs:
+  - level: 1
+    emoji: "🌱"
+    name: "初学者"
+    desc: "バージョン管理や jj をこれから始める。まず日々の基本サイクルを回せるように。"
+    selected: true
+    file: beginner
+  - level: 2
+    emoji: "🌿"
+    name: "中級者 — Git 経験者"
+    desc: "Git は使えるが jj に移行中。pull / push / ブランチの「Git との対応」と GitHub Flow を整理。"
+    selected: false
+    file: intermediate
+  - level: 3
+    emoji: "🌳"
+    name: "Git 熟練者"
+    desc: "rebase -i を息をするように使う人向け。revset・履歴の外科手術・スタックPR・設定レシピ。"
+    selected: false
+    file: advanced
+
+footer:
+  links:
+    - href: "https://docs.jj-vcs.dev/latest/"
+      text: "公式ドキュメント"
+    - href: "https://docs.jj-vcs.dev/latest/github/"
+      text: "GitHub との連携ガイド"
+    - href: "https://docs.jj-vcs.dev/latest/git-command-table/"
+      text: "Git コマンド対応表"
+    - href: "https://github.com/jj-vcs/jj"
+      text: "jj-vcs/jj (GitHub)"
+  note: "jj v0.42 系(2026年6月リリース)準拠 · 本サイトは非公式のチートシートです"

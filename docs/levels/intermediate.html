@@ -1,0 +1,198 @@
+<!-- ================= LEVEL 2: 中級者 ================= -->
+<section class="level" data-level="2">
+
+<div class="level-head">
+  <div class="lh-emoji">🌿</div>
+  <div>
+    <h2>中級者 — Git 経験者のための jj × GitHub Flow</h2>
+    <p>混乱の元はだいたい3つ:<b>「pull がない」「push はブランチではなく bookmark を送る」「bookmark は勝手に動かない」</b>。この3つさえ押さえれば、GitHub Flow は git より楽になります。</p>
+  </div>
+</div>
+
+<div class="sec-h"><h2>⚡ まず混乱を解消する3枚</h2></div>
+<div class="grid">
+  <article class="card" data-tags="pull fetch 更新 取り込み 最新化 git pull がない">
+    <h3>😵 <code>git pull</code> は無い <span class="badge warn">最重要</span></h3>
+    <p>jj では「取ってくる」と「取り込む」が分かれています。</p>
+    <div class="cmd"><pre><code>jj git fetch              <span class="c"># ① リモートの最新を取得</span>
+jj rebase -b @ -o main    <span class="c"># ② 自分の作業を main の先端に載せ替え</span></code></pre></div>
+    <p class="note tip"><b>fetch しても作業コピーは1ミリも動きません</b>。git pull のように「いきなりマージが始まって混乱」することがなく、②をやるかどうかは自分で決められます。</p>
+  </article>
+  <article class="card" data-tags="push ブックマーク bookmark 送る 違い current branch">
+    <h3>😵 push は「bookmark」を送る</h3>
+    <p>git の push は「今いるブランチ」を送りますが、jj に「今いるブランチ」はありません。<b>どの bookmark(または change)を送るか明示</b>します。</p>
+    <div class="cmd"><pre><code>jj git push -c @-              <span class="c"># この変更を送る(名前は自動生成)</span>
+jj git push -b <span class="p">feat-login</span>      <span class="c"># この bookmark を送る</span>
+jj git push                    <span class="c"># 動かした tracked bookmark を全部送る</span></code></pre></div>
+  </article>
+  <article class="card" data-tags="bookmark 動かない move 進まない コミットしても">
+    <h3>😵 bookmark は勝手に進まない</h3>
+    <p>git ではコミットするとブランチが進みますが、jj の bookmark は<b>貼った場所に留まります</b>。push の前に手で進めるのが作法です。</p>
+    <div class="cmd"><pre><code>jj bookmark move <span class="p">feat-login</span> --to @-</code></pre></div>
+    <p class="note">毎回やるのが面倒なら熟練者編の <code>jj tug</code> エイリアスをどうぞ。</p>
+  </article>
+</div>
+
+<div class="sec-h"><h2>🔀 GitHub Flow 完全ガイド</h2><span class="sec-note">ブランチを切る → 作業 → PR → レビュー対応 → マージ後の掃除まで</span></div>
+<div class="grid wide">
+  <article class="card" data-tags="github flow ワークフロー pr プルリクエスト 一連の流れ">
+    <ol class="steps">
+      <li>
+        <h4>準備(最初の1回だけ)</h4>
+        <div class="cmd"><pre><code>jj git clone --colocate <span class="p">git@github.com:OWNER/REPO.git</span>
+cd REPO</code></pre></div>
+        <p class="step-sub">clone すると既定ブランチ(main)は自動で track されます。既存の git リポジトリで始めるなら、リポジトリ内で <code>jj git init --colocate</code>。</p>
+      </li>
+      <li>
+        <h4>ブランチを切る = <code>jj new main</code></h4>
+        <div class="cmd"><pre><code>jj git fetch                  <span class="c"># まず最新化</span>
+jj new main -m <span class="p">"feat: ログイン画面"</span></code></pre></div>
+        <p class="step-sub"><b>ブランチ名はまだ要りません。</b>「main から新しいコミットを生やす」だけで、それが git でいう feature ブランチの開始です。名前(bookmark)は push 直前に付ければOK。</p>
+      </li>
+      <li>
+        <h4>作業してコミットを積む</h4>
+        <div class="cmd"><pre><code><span class="c"># 編集 → 区切りごとに</span>
+jj commit -m <span class="p">"feat: フォームの見た目を実装"</span>
+<span class="c"># さらに編集 →</span>
+jj commit -m <span class="p">"feat: バリデーションを追加"</span></code></pre></div>
+        <p class="step-sub">「さっきのコミットに入れ忘れた!」は <code>jj squash</code>(今の変更を親に合流)。<code>git commit --amend</code> と違って push 済みでも安全に扱えます(後述)。</p>
+      </li>
+      <li>
+        <h4>push して PR を作る</h4>
+        <div class="cmd"><pre><code><span class="c"># 案A: 名前も jj にまかせる(push-xxxx という bookmark が自動生成)</span>
+jj git push -c @-
+
+<span class="c"># 案B: ちゃんと名前を付ける</span>
+jj git push --named <span class="p">feat-login</span>=@-</code></pre></div>
+        <p class="step-sub"><code>--named</code> は「bookmark 作成 + push」の一発コマンド。あとは GitHub 上か <code>gh pr create</code> で PR を作成(colocate していれば gh CLI もそのまま動きます)。</p>
+        <details><summary>@- ってなんで「親」を push するの?</summary>
+          <div class="d-body"><code>jj commit</code> の後、あなたは新しい<b>空の</b>作業コピー(@)の上にいます。完成した仕事はその親(@-)。だから push するのは <code>@-</code> です。空でない @ にいるなら <code>-c @</code> でも構いません。</div>
+        </details>
+      </li>
+      <li>
+        <h4>レビュー対応(コミットを積む派)</h4>
+        <div class="cmd"><pre><code>jj new <span class="p">feat-login</span>                     <span class="c"># bookmark の先端から再開</span>
+<span class="c"># 指摘を修正 →</span>
+jj commit -m <span class="p">"fix: レビュー指摘対応"</span>
+jj bookmark move <span class="p">feat-login</span> --to @-   <span class="c"># bookmark を進めるのを忘れずに!</span>
+jj git push</code></pre></div>
+      </li>
+      <li>
+        <h4>レビュー対応(履歴をきれいに保つ派)</h4>
+        <div class="cmd"><pre><code>jj new <span class="p">feat-login</span>            <span class="c"># 修正用の作業場を作る</span>
+<span class="c"># 指摘を修正 →</span>
+jj squash                     <span class="c"># 修正を直前のコミットに溶かし込む</span>
+jj git push                   <span class="c"># 自動で安全な force push になる</span></code></pre></div>
+        <p class="step-sub">直したいコミットが先端でなければ <code>jj squash --into &lt;change-id&gt;</code>。jj の force push は常に <code>--force-with-lease</code> 相当なので、他人の push を踏み潰しません。</p>
+      </li>
+      <li>
+        <h4>作業中に main が進んだら</h4>
+        <div class="cmd"><pre><code>jj git fetch
+jj rebase -b @ -o main        <span class="c"># ブランチごと main の先端へ</span>
+jj git push                   <span class="c"># PR も更新(自動 force-with-lease)</span></code></pre></div>
+        <p class="step-sub">コンフリクトしても<b>止まりません</b>(下の「コンフリクト」カード参照)。<code>-b @</code> は「@ を含むブランチ一式」の意味で、省略しても同じです。</p>
+      </li>
+      <li>
+        <h4>マージされたら掃除</h4>
+        <div class="cmd"><pre><code>jj git fetch                  <span class="c"># マージ済み bookmark は自動で消える</span>
+jj new main                   <span class="c"># 次の作業へ!</span></code></pre></div>
+        <p class="step-sub">GitHub 側でブランチが削除されていれば、fetch でローカルの bookmark も消え、変更は main に取り込まれ済み。git のような「マージ済みブランチの削除作業」はほぼ不要です。</p>
+      </li>
+    </ol>
+  </article>
+</div>
+
+<div class="sec-h"><h2>🔄 Git → jj コマンド対応表</h2><span class="sec-note">手が覚えている git コマンドから逆引き</span></div>
+<div class="grid wide"><article class="card" data-tags="対応表 変換 git コマンド 逆引き translation">
+<div class="tbl-scroll">
+<table class="compare">
+  <thead><tr><th>やりたいこと</th><th>Git</th><th>jj</th></tr></thead>
+  <tbody>
+    <tr data-tags="clone"><td>クローン</td><td class="git"><code>git clone URL</code></td><td><code>jj git clone --colocate URL</code></td></tr>
+    <tr data-tags="pull 最新化"><td>リモートの取り込み</td><td class="git"><code>git pull</code></td><td><code>jj git fetch</code> + <code>jj rebase -b @ -o main</code><span class="why">「取得」と「載せ替え」は別操作。fetch は作業コピーを動かさない</span></td></tr>
+    <tr data-tags="branch checkout -b ブランチ作成"><td>ブランチを切る</td><td class="git"><code>git switch -c feat</code></td><td><code>jj new main</code><span class="why">名前は不要。push 時に付ければよい</span></td></tr>
+    <tr data-tags="add commit ステージ"><td>変更をコミット</td><td class="git"><code>git add -A && git commit -m</code></td><td><code>jj commit -m "..."</code><span class="why">add は存在しない</span></td></tr>
+    <tr data-tags="push"><td>push</td><td class="git"><code>git push -u origin feat</code></td><td><code>jj git push --named feat=@-</code><span class="why">2回目以降は <code>jj git push</code> だけ</span></td></tr>
+    <tr data-tags="amend 修正"><td>直前コミットを修正</td><td class="git"><code>git commit --amend</code></td><td><code>jj squash</code>(内容)/ <code>jj describe</code>(メッセージ)</td></tr>
+    <tr data-tags="switch checkout 移動"><td>ブランチ切り替え</td><td class="git"><code>git switch other</code></td><td><code>jj new other</code>(続きから作業)/ <code>jj edit &lt;rev&gt;</code>(そのものを編集)</td></tr>
+    <tr data-tags="stash 退避"><td>作業の一時退避</td><td class="git"><code>git stash</code></td><td><code>jj new</code> だけ<span class="why">作業コピーはコミットなので退避不要。戻るときは <code>jj edit</code></span></td></tr>
+    <tr data-tags="log 履歴"><td>履歴を見る</td><td class="git"><code>git log --oneline --graph</code></td><td><code>jj log</code></td></tr>
+    <tr data-tags="rebase"><td>main に載せ替え</td><td class="git"><code>git rebase main</code></td><td><code>jj rebase -o main</code><span class="why">コンフリクトで止まらない・子孫も自動で追従</span></td></tr>
+    <tr data-tags="merge マージ"><td>マージコミット</td><td class="git"><code>git merge feat</code></td><td><code>jj new main feat</code><span class="why">親を2つ指定して new するだけ</span></td></tr>
+    <tr data-tags="cherry-pick"><td>チェリーピック</td><td class="git"><code>git cherry-pick X</code></td><td><code>jj duplicate X -o @</code></td></tr>
+    <tr data-tags="reset hard 取り消し"><td>コミットを捨てる</td><td class="git"><code>git reset --hard HEAD~</code></td><td><code>jj abandon</code></td></tr>
+    <tr data-tags="revert 打ち消し"><td>打ち消しコミット</td><td class="git"><code>git revert X</code></td><td><code>jj revert -r X</code></td></tr>
+    <tr data-tags="reflog 復旧"><td>事故からの復旧</td><td class="git"><code>git reflog</code></td><td><code>jj op log</code> + <code>jj op restore</code>(または <code>jj undo</code>)</td></tr>
+    <tr data-tags="blame annotate"><td>行ごとの由来</td><td class="git"><code>git blame FILE</code></td><td><code>jj file annotate FILE</code></td></tr>
+  </tbody>
+</table>
+</div>
+</article></div>
+
+<div class="sec-h"><h2>🔖 bookmark 操作 早見表</h2></div>
+<div class="grid">
+  <article class="card" data-tags="bookmark create 作成 track 追跡">
+    <h3>作る・追跡する</h3>
+    <div class="cmd"><pre><code>jj bookmark create <span class="p">feat</span> -r @-   <span class="c"># @- に bookmark を貼る</span>
+jj bookmark track <span class="p">feat@origin</span>   <span class="c"># リモートの bookmark を追跡</span>
+jj bookmark list                <span class="c"># 一覧(-a で リモート込み)</span></code></pre></div>
+  </article>
+  <article class="card" data-tags="bookmark move 移動 進める set">
+    <h3>動かす・消す</h3>
+    <div class="cmd"><pre><code>jj bookmark move <span class="p">feat</span> --to @-   <span class="c"># 付け替え(前進)</span>
+jj bookmark delete <span class="p">feat</span>         <span class="c"># 削除(push すればリモートも消える)</span>
+jj bookmark forget <span class="p">feat</span>         <span class="c"># jj の管理から外すだけ(リモートに影響なし)</span></code></pre></div>
+  </article>
+  <article class="card" data-tags="他人 ブランチ レビュー checkout pr">
+    <h3>他人の PR ブランチを見る</h3>
+    <div class="cmd"><pre><code>jj git fetch
+jj new <span class="p">their-branch</span>@origin     <span class="c"># その先端から作業コピーを作る</span></code></pre></div>
+    <p class="note">track していないリモート bookmark は <code>name@remote</code> の形で指定します。</p>
+  </article>
+</div>
+
+<div class="sec-h"><h2>💥 コンフリクトは怖くない</h2></div>
+<div class="grid">
+  <article class="card" data-tags="conflict コンフリクト 競合 rebase 止まらない">
+    <h3>jj のコンフリクトは「状態」</h3>
+    <p>git はコンフリクトで<b>作業が中断</b>しますが(MERGING地獄)、jj はコンフリクトを<b>コミットの中に記録して続行</b>します。rebase は必ず成功し、解消はいつでも好きなときに。</p>
+    <div class="cmd"><pre><code>jj log    <span class="c"># × 印がコンフリクトを含むコミット</span>
+jj st     <span class="c"># どのファイルが競合しているか</span></code></pre></div>
+  </article>
+  <article class="card" data-tags="conflict 解消 resolve マーカー">
+    <h3>解消のしかた</h3>
+    <div class="cmd"><pre><code>jj new <span class="p">&lt;競合コミット&gt;</span>   <span class="c"># または jj edit</span>
+<span class="c"># ファイル内のマーカーを直す(またはマージツール起動 ↓)</span>
+jj resolve
+jj squash                <span class="c"># new した場合は解消結果を親へ</span></code></pre></div>
+    <p class="note tip">解消すると<b>子孫のコンフリクトも自動で解消</b>されます。rebase のたびに同じ競合を直す git の苦行はありません。</p>
+  </article>
+  <article class="card" data-tags="conflict 途中 中断 やめたい abort">
+    <h3>「rebase --abort」したい</h3>
+    <div class="cmd"><pre><code>jj undo</code></pre></div>
+    <p class="note">中断という概念自体が不要。気に入らなければ操作ごと取り消すだけです。</p>
+  </article>
+</div>
+
+<div class="sec-h"><h2>🧰 履歴の編集(中級編)</h2></div>
+<div class="grid">
+  <article class="card" data-tags="squash 合流 amend fixup">
+    <h3>変更を親に溶かし込む</h3>
+    <div class="cmd"><pre><code>jj squash                 <span class="c"># @ の内容を全部親へ</span>
+jj squash -i              <span class="c"># 対話的に一部だけ</span>
+jj squash --into <span class="p">&lt;rev&gt;</span>    <span class="c"># 親以外の任意のコミットへ</span></code></pre></div>
+  </article>
+  <article class="card" data-tags="split 分割 一部だけコミット add -p">
+    <h3>コミットを分割する(git add -p の代わり)</h3>
+    <div class="cmd"><pre><code>jj split                  <span class="c"># 対話UIで「前半」に入れる変更を選ぶ</span>
+jj split <span class="p">path/to/file</span>     <span class="c"># このファイルだけ前半に</span></code></pre></div>
+    <p class="note">「全部入りで作業 → 後から分ける」が jj 流。ステージングの代替です。</p>
+  </article>
+  <article class="card" data-tags="describe メッセージ 修正 reword">
+    <h3>コミットメッセージだけ直す</h3>
+    <div class="cmd"><pre><code>jj describe -r <span class="p">&lt;rev&gt;</span> -m <span class="p">"新しいメッセージ"</span></code></pre></div>
+    <p class="note">過去のどのコミットでもOK。子孫は自動でリベースされます。</p>
+  </article>
+</div>
+
+</section>
