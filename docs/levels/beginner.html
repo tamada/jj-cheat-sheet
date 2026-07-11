@@ -1,0 +1,150 @@
+<!-- ================= LEVEL 1: 初学者 ================= -->
+<section class="level" data-level="1">
+
+<div class="level-head">
+  <div class="lh-emoji">🌱</div>
+  <div>
+    <h2>初学者 — まずはこれだけ</h2>
+    <p>jj は「うっかり」に強いツールです。<b>保存し忘れも、ステージし忘れも、操作ミスも存在しません</b>。最初に3つの原則を頭に入れて、あとは基本サイクルを回すだけです。</p>
+  </div>
+</div>
+
+<div class="sec-h"><h2>💡 3つの大原則</h2><span class="sec-note">これを知っていれば jj の動きはすべて説明がつきます</span></div>
+<div class="grid">
+  <article class="card" data-tags="原則 working copy 作業コピー スナップショット 自動">
+    <h3>① 作業コピー自体がコミット</h3>
+    <p>いま編集中のファイルたちは <code>@</code> という「常に存在するコミット」です。ファイルを編集すると、次に jj コマンドを打った瞬間に<b>自動でスナップショット</b>されます。「コミットし忘れて消えた」が起きません。</p>
+  </article>
+  <article class="card" data-tags="原則 git add ステージング インデックス 不要">
+    <h3>② <code>git add</code>(ステージング)は無い</h3>
+    <p>インデックスという概念がありません。変更はすべて自動的に <code>@</code> に含まれます。「一部だけコミットしたい」ときは、後から <code>jj split</code> で分ければOK(中級編で解説)。</p>
+  </article>
+  <article class="card" data-tags="原則 undo 取り消し 安全 op log">
+    <h3>③ すべての操作が取り消せる</h3>
+    <p>jj はすべての操作を記録しています。何をやらかしても <code>jj undo</code> で直前の操作を丸ごと取り消せます。<b>壊れたら undo</b>。これが安心の源です。</p>
+    <div class="cmd"><pre><code>jj undo</code></pre></div>
+  </article>
+</div>
+
+<div class="sec-h"><h2>🚀 はじめる</h2></div>
+<div class="grid">
+  <article class="card" data-tags="init 初期化 新規 リポジトリ 作成 start">
+    <h3>新しくリポジトリを作る</h3>
+    <div class="cmd"><pre><code>jj git init --colocate</code></pre></div>
+    <p class="note tip"><b>--colocate</b> を付けると <code>.git</code> も一緒に作られ、git コマンドや既存ツール(エディタの git 連携など)がそのまま使えます。迷ったら付けておくのがおすすめ。</p>
+  </article>
+  <article class="card" data-tags="clone クローン 複製 github 取得">
+    <h3>GitHub からクローンする</h3>
+    <div class="cmd"><pre><code>jj git clone --colocate <span class="p">https://github.com/OWNER/REPO</span></code></pre></div>
+  </article>
+  <article class="card" data-tags="config 設定 名前 メール user">
+    <h3>最初の設定(名前とメール)</h3>
+    <div class="cmd"><pre><code>jj config set --user user.name <span class="p">"はるさん"</span>
+jj config set --user user.email <span class="p">"you@example.com"</span></code></pre></div>
+  </article>
+</div>
+
+<div class="sec-h"><h2>🔁 毎日の基本サイクル</h2><span class="sec-note">jj の日常はこの4コマンドの繰り返し</span></div>
+<div class="grid wide">
+  <article class="card" data-tags="基本 サイクル st status diff describe new commit ワークフロー">
+    <ol class="steps">
+      <li>
+        <h4>ファイルを編集する</h4>
+        <p class="step-sub">エディタで普通に作業。<code>git add</code> は不要、変更は自動で記録されます。</p>
+      </li>
+      <li>
+        <h4>状態を確認する</h4>
+        <div class="cmd"><pre><code>jj st        <span class="c"># 何が変わった?(git status)</span>
+jj diff      <span class="c"># 差分の中身を見る</span></code></pre></div>
+      </li>
+      <li>
+        <h4>今の作業に説明を付ける</h4>
+        <div class="cmd"><pre><code>jj describe -m <span class="p">"トップページの文言を修正"</span></code></pre></div>
+        <p class="step-sub">git と違い「コミットする」のではなく、すでに存在するコミット(= 作業コピー)に<b>説明を書く</b>イメージです。</p>
+      </li>
+      <li>
+        <h4>区切りをつけて次の作業へ</h4>
+        <div class="cmd"><pre><code>jj new</code></pre></div>
+        <p class="step-sub">いまのコミットを完成扱いにして、その上に新しい空の作業コピーを作ります。<b>describe + new を一度にやる</b>のが <code>jj commit -m "..."</code> です。</p>
+      </li>
+    </ol>
+  </article>
+</div>
+
+<div class="sec-h"><h2>📋 よく使うコマンド</h2></div>
+<div class="grid">
+  <article class="card" data-tags="log 履歴 ログ グラフ 確認">
+    <h3>履歴を見る</h3>
+    <div class="cmd"><pre><code>jj log</code></pre></div>
+    <p class="note"><code>@</code> が今いる場所。紫の文字(change ID)は先頭1〜2文字だけでコマンドに使えます(例: <code>jj new qpv</code>)。</p>
+  </article>
+  <article class="card" data-tags="commit コミット まとめて">
+    <h3>説明を付けて区切る(2つを1コマンドで)</h3>
+    <div class="cmd"><pre><code>jj commit -m <span class="p">"ヘッダーを追加"</span></code></pre></div>
+    <p class="note"><code>jj describe -m</code> + <code>jj new</code> と同じ。git の <code>git commit -am</code> に一番近い感覚です。</p>
+  </article>
+  <article class="card" data-tags="undo 取り消し 失敗 元に戻す ミス">
+    <h3>直前の操作を取り消す</h3>
+    <div class="cmd"><pre><code>jj undo</code></pre></div>
+    <p class="note tip">コミットの取り消しではなく「jj の操作」の取り消し。rebase でも push の記録でも戻せます。連発すればさらに過去へ。</p>
+  </article>
+  <article class="card" data-tags="restore ファイル 復元 変更を捨てる checkout discard">
+    <h3>ファイルの変更を捨てる</h3>
+    <div class="cmd"><pre><code>jj restore <span class="p">path/to/file</span>   <span class="c"># そのファイルだけ親の状態に戻す</span>
+jj abandon               <span class="c"># 今のコミットごと丸ごと捨てる</span></code></pre></div>
+  </article>
+  <article class="card" data-tags="edit 過去 コミット 移動 戻る checkout">
+    <h3>過去のコミットに戻って直す</h3>
+    <div class="cmd"><pre><code>jj edit <span class="p">&lt;change-id&gt;</span></code></pre></div>
+    <p class="note">そのコミットが作業コピーになり、直した内容は<b>子孫に自動で伝わります</b>(自動リベース)。git の checkout + rebase が一発で済む感覚。</p>
+  </article>
+  <article class="card" data-tags="共有 push 公開 github">
+    <h3>GitHub に上げてみる(お試し)</h3>
+    <div class="cmd"><pre><code>jj git push -c @-</code></pre></div>
+    <p class="note"><code>@-</code> は「作業コピーの親」= 完成した直近のコミット。ブランチ名は jj が自動で付けてくれます。詳しくは中級編の GitHub Flow へ。</p>
+  </article>
+</div>
+
+<div class="sec-h"><h2>📖 用語ミニ辞典</h2></div>
+<div class="grid">
+  <article class="card" data-tags="用語 change id commit id 違い">
+    <h3>change ID と commit ID</h3>
+    <p><b>change ID</b>(紫・kからzの文字)は「変更」の一生変わらない名前。内容を修正しても同じIDのまま。<b>commit ID</b>(青・16進数)は git のハッシュで、修正のたびに変わります。<b>普段は change ID を使えばOK</b>。</p>
+  </article>
+  <article class="card" data-tags="用語 @ 記号 リビジョン 親">
+    <h3><code>@</code> と <code>@-</code></h3>
+    <p><code>@</code> = 今の作業コピー。<code>@-</code> = その親。<code>@--</code> でさらに親。多くのコマンドは <code>-r</code> で対象を指定でき、省略時は <code>@</code> が対象です。</p>
+  </article>
+  <article class="card" data-tags="用語 bookmark ブックマーク ブランチ 違い branch">
+    <h3>bookmark(ブックマーク)</h3>
+    <p>git のブランチに相当する「コミットに貼る付箋」。ただし<b>コミットしても自動では動きません</b>。GitHub と連携するとき(push)に必要になります。詳しくは中級編で。</p>
+  </article>
+  <article class="card" data-tags="用語 匿名ブランチ anonymous 名前がない">
+    <h3>匿名ブランチ</h3>
+    <p>jj ではブランチ名を付けずに歴史を分岐できます。<code>jj new</code> で好きな場所から作業を始めるだけ。名前は push するときに考えれば十分です。</p>
+  </article>
+</div>
+
+<div class="sec-h"><h2>🆘 困ったときは</h2></div>
+<div class="grid">
+  <article class="card" data-tags="困った ヘルプ help">
+    <h3>迷子になったら</h3>
+    <div class="cmd"><pre><code>jj st      <span class="c"># 今どこで何が変わっている?</span>
+jj log     <span class="c"># 歴史のどこにいる?</span>
+jj undo    <span class="c"># やっぱりさっきのは無し!</span></code></pre></div>
+  </article>
+  <article class="card" data-tags="op log 操作履歴 タイムマシン">
+    <h3>操作の履歴を見る</h3>
+    <div class="cmd"><pre><code>jj op log</code></pre></div>
+    <p class="note">「リポジトリ全体のタイムマシン」。undo で戻りすぎたら <code>jj redo</code> はありませんが、<code>jj op restore &lt;操作ID&gt;</code> で任意の時点に戻れます。</p>
+  </article>
+  <article class="card" data-tags="empty 枝分かれ 分岐 先端 並行 auto-abandon 自動破棄 整理 きれいに">
+    <h3>先端が empty のまま枝分かれしたら</h3>
+    <p>複数の作業コピー(別マシン・並行操作・undo 後など)が合流すると、<b>空で説明なしの先端</b>が複数残ることがあります。中身のあるコミットは失われていないので慌てなくて大丈夫。</p>
+    <div class="cmd"><pre><code>jj edit <span class="p">&lt;使いたい方のchange ID&gt;</span>   <span class="c"># そちらの先端に乗り移る</span>
+jj abandon <span class="p">&lt;不要な方&gt;</span>             <span class="c"># それでも残ったら捨てる</span></code></pre></div>
+    <p class="note tip"><b>空で説明なしの作業コピーは、離れた瞬間に自動で破棄されます</b>(auto-abandon)。多くの場合 <code>jj edit</code> か <code>jj new main</code> するだけで枝分かれは消えます。</p>
+  </article>
+</div>
+
+</section>
