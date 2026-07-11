@@ -1,0 +1,131 @@
+# 1枚もの印刷用チートシート(A4 横)のコンテンツ(データ)。
+# サイト本体(beginner/intermediate/advanced.yaml)からコマンドの要点だけを
+# 抜粋・凝縮したもの。見た目は build.js の renderPrint が付ける。
+#
+# groups[].items は次のいずれか:
+#   - "説明だけの一行"                         (原則やメモ)
+#   - { cmd: "jj ...", desc: "コメント" }      (コマンド + 短い説明)
+#   - { git: "git ...", jj: "jj ..." }         (Git → jj 対応)
+title: "Jujutsu (jj) チートシート"
+subtitle: "GitHub Flow を jj で乗りこなすための1枚もの早見表"
+updated: "jj v0.42 系準拠 · 非公式"
+source: "https://tamada.github.io/jj-cheat-sheet/"
+
+groups:
+  - heading: "3つの大原則"
+    items:
+      - "編集中のファイル = <code>@</code> という常在コミット。jj 実行時に自動スナップショット"
+      - "<code>git add</code>(ステージング)は無い。変更はすべて <code>@</code> に入る"
+      - "すべての操作が <code>jj undo</code> で取り消せる。壊れたら undo"
+
+  - heading: "はじめる"
+    items:
+      - { cmd: "jj git init --colocate", desc: "新しくリポジトリを作る(.git も作る)" }
+      - { cmd: "jj git clone --colocate URL", desc: "GitHub からクローン" }
+      - { cmd: 'jj config set --user user.name "名前"', desc: "最初の名前設定" }
+      - { cmd: 'jj config set --user user.email "you@ex.com"', desc: "最初のメール設定" }
+
+  - heading: "毎日の基本サイクル"
+    items:
+      - { cmd: "jj st", desc: "何が変わった?(git status)" }
+      - { cmd: "jj diff", desc: "差分の中身を見る" }
+      - { cmd: 'jj describe -m "説明"', desc: "作業コピーに説明を付ける" }
+      - { cmd: "jj new", desc: "区切りをつけて次の作業へ" }
+      - { cmd: 'jj commit -m "説明"', desc: "describe + new を一度に(git commit -am 相当)" }
+
+  - heading: "よく使うコマンド"
+    items:
+      - { cmd: "jj log", desc: "履歴を見る(@ が今いる場所)" }
+      - { cmd: "jj undo", desc: "直前の操作を取り消す" }
+      - { cmd: "jj restore path", desc: "そのファイルだけ親の状態に戻す" }
+      - { cmd: "jj abandon", desc: "今のコミットごと丸ごと捨てる" }
+      - { cmd: "jj edit <change-id>", desc: "過去のコミットに戻って直す(子孫は自動リベース)" }
+      - { cmd: "jj op log", desc: "操作の履歴(リポジトリのタイムマシン)" }
+
+  - heading: "用語ミニ辞典"
+    items:
+      - "<b>change ID</b>(紫)= 変更の不変の名前。<b>commit ID</b>(青)= git のハッシュ"
+      - "<code>@</code> = 作業コピー / <code>@-</code> = 親 / <code>@--</code> = 祖父母"
+      - "<b>bookmark</b> = git のブランチ相当の付箋。コミットしても自動では動かない"
+
+  - heading: "GitHub Flow(pull は無い)"
+    items:
+      - { cmd: "jj git fetch", desc: "① リモートの最新を取得(作業コピーは動かない)" }
+      - { cmd: "jj rebase -b @ -o main", desc: "② 自分の作業を main の先端へ載せ替え" }
+      - { cmd: 'jj new main -m "feat: ..."', desc: "ブランチを切る(名前は不要)" }
+      - { cmd: "jj git push -c @-", desc: "この変更を送る(bookmark 名は自動生成)" }
+      - { cmd: "jj git push --named feat=@-", desc: "名前を付けて bookmark 作成 + push" }
+      - { cmd: "jj bookmark move feat --to @-", desc: "push 前に bookmark を手で進める" }
+      - { cmd: "jj git push", desc: "動かした tracked bookmark を全部送る" }
+
+  - heading: "bookmark 早見表"
+    items:
+      - { cmd: "jj bookmark create feat -r @-", desc: "@- に bookmark を貼る" }
+      - { cmd: "jj bookmark track feat@origin", desc: "リモートの bookmark を追跡" }
+      - { cmd: "jj bookmark list", desc: "一覧(-a でリモート込み)" }
+      - { cmd: "jj bookmark delete feat", desc: "削除(push でリモートも消える)" }
+      - { cmd: "jj bookmark forget feat", desc: "jj の管理から外すだけ" }
+
+  - heading: "コンフリクトは「状態」"
+    items:
+      - "rebase は必ず成功し、競合は<b>コミットに記録</b>される。解消はいつでも好きなときに"
+      - { cmd: "jj log", desc: "× 印がコンフリクトを含むコミット" }
+      - { cmd: "jj resolve", desc: "マーカーを直す/マージツール起動" }
+      - { cmd: "jj squash", desc: "new した場合は解消結果を親へ(子孫も自動解消)" }
+      - { cmd: "jj undo", desc: "rebase --abort 相当(中断の概念は不要)" }
+
+  - heading: "履歴の編集"
+    items:
+      - { cmd: "jj squash", desc: "@ の内容を全部親へ溶かし込む" }
+      - { cmd: "jj squash -i", desc: "対話的に一部だけ" }
+      - { cmd: "jj squash --into <rev>", desc: "親以外の任意のコミットへ" }
+      - { cmd: "jj split", desc: "コミットを分割(git add -p の代わり)" }
+      - { cmd: 'jj describe -r <rev> -m "..."', desc: "過去のメッセージだけ直す" }
+
+  - heading: "revset(歴史へのクエリ)"
+    items:
+      - { cmd: "x::y   x..y", desc: "経路 / git の x..y。 | & ~ で和・積・否定" }
+      - { cmd: "trunk()  mine()", desc: "main(自動判定)/ 自分が author" }
+      - { cmd: "bookmarks()  conflicts()", desc: "bookmark 付き / 競合を含む rev" }
+      - { cmd: 'jj log -r "trunk()..@"', desc: "今の作業の「ブランチ全体」" }
+
+  - heading: "履歴の外科手術"
+    items:
+      - { cmd: "jj absorb", desc: "各変更を「その行を最後に触ったコミット」へ自動 squash" }
+      - { cmd: "jj rebase -r X -o Y", desc: "X だけを Y の上へ(子は繋ぎ直し)" }
+      - { cmd: "jj rebase -s X -o Y", desc: "X とその子孫ごと" }
+      - { cmd: "jj rebase -r X -A Y", desc: "Y の後に挿入(-B で前)" }
+      - { cmd: "jj parallelize X Y Z", desc: "直列を兄弟化(独立PRへ)" }
+      - { cmd: "jj diffedit -r X", desc: "X の diff 自体を対話編集" }
+      - { cmd: "jj evolog -r X", desc: "コミット自身の変遷を追う" }
+      - { cmd: "jj op restore X", desc: "リポジトリ全体をその時点へ" }
+
+  - heading: "スタック PR"
+    items:
+      - "各段に bookmark を貼るだけ。<b>下の段を直せば上の段は自動追従</b>、push も一括"
+      - { cmd: "jj git push --named base=@-- --named main=@-", desc: "各段に名前を付けて一括 push" }
+      - { cmd: "jj git fetch; jj rebase -b @ -o main", desc: "下がマージされたら上を main 直付けに" }
+
+  - heading: "Git → jj 対応表"
+    items:
+      - { git: "git pull", jj: "jj git fetch + jj rebase -b @ -o main" }
+      - { git: "git switch -c feat", jj: "jj new main" }
+      - { git: "git add -A && git commit -m", jj: 'jj commit -m "..."' }
+      - { git: "git push -u origin feat", jj: "jj git push --named feat=@-" }
+      - { git: "git commit --amend", jj: "jj squash / jj describe" }
+      - { git: "git switch other", jj: "jj new other / jj edit <rev>" }
+      - { git: "git stash", jj: "jj new(戻るときは jj edit)" }
+      - { git: "git rebase main", jj: "jj rebase -o main(止まらない)" }
+      - { git: "git merge feat", jj: "jj new main feat" }
+      - { git: "git cherry-pick X", jj: "jj duplicate X -o @" }
+      - { git: "git reset --hard HEAD~", jj: "jj abandon" }
+      - { git: "git revert X", jj: "jj revert -r X" }
+      - { git: "git reflog", jj: "jj op log + jj op restore" }
+      - { git: "git blame FILE", jj: "jj file annotate FILE" }
+
+  - heading: "設定レシピ(~/.config/jj/config.toml)"
+    items:
+      - { cmd: 'tug = ["bookmark","move","--from","closest_bookmark(@)","--to","@-"]', desc: "[aliases] 直近 bookmark を @- へ引っ張る" }
+      - { cmd: '"closest_bookmark(to)" = "heads(::to & bookmarks())"', desc: "[revset-aliases] tug 用" }
+      - { cmd: "jj fix", desc: "mutable な全コミットに formatter を適用" }
+      - { cmd: 'private-commits = "description(glob:\"wip:*\")"', desc: "[git] WIP の push 事故防止" }

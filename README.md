@@ -22,12 +22,14 @@ data/            ← コンテンツ(データ)。文言を編集するのはこ
   beginner.yaml    レベル1(初学者)のカード群
   intermediate.yaml レベル2(中級者)のカード群
   advanced.yaml    レベル3(熟練者)のカード群
+  print.yaml       1枚もの印刷用チートシート(要点の抜粋)
 src/             ← デザイン資産(原本)
   style.css
   script.js
 build.js         ← data + テンプレートから docs/ を生成するビルドスクリプト
 docs/            ← 生成物(GitHub Pages が公開する。手で編集しない)
   index.html
+  print.html      1枚もの印刷用チートシート(A4 横・PDF 出力用)
   levels/{beginner,intermediate,advanced}.html
   style.css / script.js   （src/ からコピーされる）
 ```
@@ -58,6 +60,29 @@ python3 -m http.server --directory docs 8000
 
 生成された `docs/` の変更もコミットに含めてください
 (GitHub Pages のワークフローが `docs/` をそのまま公開するため)。
+
+## PDF(1枚もの印刷用チートシート)
+
+全 54 カードを 1 枚に収めるのは不可能なため、`data/print.yaml` に
+**要点を凝縮した抜粋**を持たせ、`build.js` が **A4 横・4段組**の
+`docs/print.html` を生成します(スタイルは印刷で確実に 1 ページに収まるよう
+`print.html` 内に自己完結。`@page { size: A4 landscape }` を使用)。
+
+- サイト本体のヘッダの **🖨 PDF** リンクから `print.html` を開けます。
+- `print.html` の **「🖨 PDFとして保存」** ボタン(`window.print()`)→
+  ブラウザの印刷ダイアログで「PDF に保存」を選ぶと出力できます
+  (puppeteer などの重い依存は使いません)。
+- 中身を増減したいときは `data/print.yaml` を編集して `npm run build`。
+
+**1 ページに収まることの検証**(Chrome があれば):
+
+```sh
+npm run build
+"/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" \
+  --headless --disable-gpu --no-pdf-header-footer \
+  --print-to-pdf=out.pdf "file://$(pwd)/docs/print.html"
+# out.pdf が 1 ページであることを確認(PDF の /Count が 1)
+```
 
 ## ローカルで見る
 
